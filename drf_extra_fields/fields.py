@@ -58,20 +58,13 @@ class Base64FieldMixin(object):
             return base64_data
         if base64_data in self.EMPTY_VALUES:
             return None
-        print('######', base64_data)
         if isinstance(base64_data, six.string_types):
             # Strip base64 header.
             if ';base64,' in base64_data:
                 header, base64_data = base64_data.split(';base64,')
-                print(header.split(':')[1] )
             # Try to decode the file. Return validation error if it fails.
             try:
                 decoded_file = base64.b64decode(base64_data)
-            #     print('-----------------------------')
-            #     the_encoding = chardet.detect(decoded_file)
-            #     print(the_encoding.lower())
-            #     text = codecs.decode(decoded_file,'iso-8859-1')
-            #     print(text)
             except (TypeError, binascii.Error, ValueError):
                 raise ValidationError(self.INVALID_FILE_MESSAGE)
             # Generate file name:
@@ -174,25 +167,9 @@ class Base64FileField(Base64FieldMixin, FileField):
         "xlsx",
         "bat"
     )
-    print('woah')
 
     INVALID_FILE_MESSAGE = _("Please upload a valid file.")
     INVALID_TYPE_MESSAGE = _("The type of the file couldn't be determined.")
-
-    # def get_file_extension(self, filename, decoded_file):
-        # print('hiiiiiiii')
-        # # name, file_extension = os.path.splitext(filename)
-        # print(filename)
-
-        # extension = imghdr.what(filename, decoded_file)
-        # if extension is None:
-            
-        #     return "pdf"
-        # extension = "jpg" if extension == "jpeg" else extension
-        # print('hi')
-        # print(extension)
-        # return extension
-
 
 class RangeField(DictField):
 
@@ -212,7 +189,6 @@ class RangeField(DictField):
         if 'data:' in data and ';base64,' in data:
             # Break out the header from the base64 content
             header, data = data.split(';base64,')
-            print('##############', header)
         if not isinstance(data, dict):
             self.fail('not_a_dict', input_type=type(data).__name__)
         validated_dict = {}
