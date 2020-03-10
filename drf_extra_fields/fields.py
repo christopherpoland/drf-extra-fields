@@ -1,18 +1,21 @@
-import imghdr
-import io
 import base64
 import binascii
+import imghdr
 import uuid
+import os
+import mimetypes
+import chardet
 
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
+from django.utils import six
 from django.utils.translation import ugettext_lazy as _
 
+from mimetypes import guess_extension, guess_type
 from rest_framework.fields import (
     DateField,
     DateTimeField,
     DictField,
-    EmailField,
     FileField,
     FloatField,
     ImageField,
@@ -24,8 +27,6 @@ from .compat import (
     DateTimeTZRange,
     NumericRange,
     postgres_fields,
-    string_types,
-    text_type,
 )
 
 
@@ -46,43 +47,50 @@ class Base64FieldMixin(object):
         raise NotImplementedError
 
     EMPTY_VALUES = (None, '', [], (), {})
-
+    
     def __init__(self, *args, **kwargs):
         self.represent_in_base64 = kwargs.pop('represent_in_base64', False)
         super(Base64FieldMixin, self).__init__(*args, **kwargs)
 
     def to_internal_value(self, base64_data):
         # Check if this is a base64 string
+        if base64_data[0:4] == 'http':
+            return base64_data
         if base64_data in self.EMPTY_VALUES:
             return None
-
-        if isinstance(base64_data, string_types):
+        print('######', base64_data)
+        if isinstance(base64_data, six.string_types):
             # Strip base64 header.
             if ';base64,' in base64_data:
                 header, base64_data = base64_data.split(';base64,')
-
+                print(header.split(':')[1] )
             # Try to decode the file. Return validation error if it fails.
             try:
                 decoded_file = base64.b64decode(base64_data)
+            #     print('-----------------------------')
+            #     the_encoding = chardet.detect(decoded_file)
+            #     print(the_encoding.lower())
+            #     text = codecs.decode(decoded_file,'iso-8859-1')
+            #     print(text)
             except (TypeError, binascii.Error, ValueError):
                 raise ValidationError(self.INVALID_FILE_MESSAGE)
             # Generate file name:
             file_name = self.get_file_name(decoded_file)
             # Get the file name extension:
-            file_extension = self.get_file_extension(file_name, decoded_file)
+            file_extension = mimetypes.guess_extension(header.split(":")[1]).split(".")[1]
+            # file_extension = self.get_file_extension(file_name, decoded_file)
             if file_extension not in self.ALLOWED_TYPES:
                 raise ValidationError(self.INVALID_TYPE_MESSAGE)
             complete_file_name = file_name + "." + file_extension
             data = ContentFile(decoded_file, name=complete_file_name)
             return super(Base64FieldMixin, self).to_internal_value(data)
-        raise ValidationError(_('Invalid type. This is not an base64 string: {}'.format(
-            type(base64_data))))
+        raise ValidationError(_('This is not an base64 string'))
 
     def get_file_extension(self, filename, decoded_file):
         raise NotImplementedError
-
+  
     def get_file_name(self, decoded_file):
-        return str(uuid.uuid4())
+        return str(uuid.uuid4())[:12]  # 12 characters are more than enough.
 
     def to_representation(self, file):
         if self.represent_in_base64:
@@ -111,28 +119,15 @@ class Base64ImageField(Base64FieldMixin, ImageField):
         "jpeg",
         "jpg",
         "png",
-        "gif"
+        "gif",
+        "pdf"
     )
     INVALID_FILE_MESSAGE = _("Please upload a valid image.")
     INVALID_TYPE_MESSAGE = _("The type of the image couldn't be determined.")
 
     def get_file_extension(self, filename, decoded_file):
-        try:
-            from PIL import Image
-        except ImportError:
-            raise ImportError("Pillow is not installed.")
+        name, file_extension = os.path.splitext(filename)
         extension = imghdr.what(filename, decoded_file)
-
-        # Try with PIL as fallback if format not detected due
-        # to bug in imghdr https://bugs.python.org/issue16512
-        if extension is None:
-            try:
-                image = Image.open(io.BytesIO(decoded_file))
-            except (OSError, IOError):
-                raise ValidationError(self.INVALID_FILE_MESSAGE)
-
-            extension = image.format.lower()
-
         extension = "jpg" if extension == "jpeg" else extension
         return extension
 
@@ -142,7 +137,13 @@ class HybridImageField(Base64ImageField):
     A django-rest-framework field for handling image-uploads through
     raw post data, with a fallback to multipart form data.
     """
-
+    ALLOWED_TYPES = (
+        "jpeg",
+        "jpg",
+        "png",
+        "gif",
+        "pdf",
+    )
     def to_internal_value(self, data):
         """
         Try Base64Field first, and then try the ImageField
@@ -160,15 +161,37 @@ class Base64FileField(Base64FieldMixin, FileField):
     A django-rest-framework field for handling file-uploads through raw post data.
     It uses base64 for en-/decoding the contents of the file.
     """
-    @property
-    def ALLOWED_TYPES(self):
-        raise NotImplementedError('List allowed file extensions')
+    ALLOWED_TYPES = (
+        "jpeg",
+        "jpg",
+        "png",
+        "gif",
+        "pdf",
+        "txt",
+        "docx",
+        "doc",
+        "xls",
+        "xlsx",
+        "bat"
+    )
+    print('woah')
 
     INVALID_FILE_MESSAGE = _("Please upload a valid file.")
     INVALID_TYPE_MESSAGE = _("The type of the file couldn't be determined.")
 
-    def get_file_extension(self, filename, decoded_file):
-        raise NotImplementedError('Implement file validation and return matching extension.')
+    # def get_file_extension(self, filename, decoded_file):
+        # print('hiiiiiiii')
+        # # name, file_extension = os.path.splitext(filename)
+        # print(filename)
+
+        # extension = imghdr.what(filename, decoded_file)
+        # if extension is None:
+            
+        #     return "pdf"
+        # extension = "jpg" if extension == "jpeg" else extension
+        # print('hi')
+        # print(extension)
+        # return extension
 
 
 class RangeField(DictField):
@@ -186,31 +209,27 @@ class RangeField(DictField):
         """
         if html.is_html_input(data):
             data = html.parse_html_dict(data)
-
+        if 'data:' in data and ';base64,' in data:
+            # Break out the header from the base64 content
+            header, data = data.split(';base64,')
+            print('##############', header)
         if not isinstance(data, dict):
             self.fail('not_a_dict', input_type=type(data).__name__)
-
-        extra_content = list(set(data) - set(["lower", "upper", "bounds", "empty"]))
-        if extra_content:
-            self.fail('too_much_content', extra=', '.join(map(str, extra_content)))
-
         validated_dict = {}
         for key in ('lower', 'upper'):
             try:
-                value = data[key]
+                value = data.pop(key)
             except KeyError:
                 continue
-
-            validated_dict[text_type(key)] = self.child.run_validation(value)
-
+            validated_dict[six.text_type(key)] = self.child.run_validation(value)
         for key in ('bounds', 'empty'):
             try:
-                value = data[key]
+                value = data.pop(key)
             except KeyError:
                 continue
-
-            validated_dict[text_type(key)] = value
-
+            validated_dict[six.text_type(key)] = value
+        if data:
+            self.fail('too_much_content', extra=', '.join(map(str, data.keys())))
         return self.range_type(**validated_dict)
 
     def to_representation(self, value):
@@ -254,17 +273,3 @@ if postgres_fields is not None:
     ModelSerializer.serializer_field_mapping[postgres_fields.DateRangeField] = DateRangeField
     ModelSerializer.serializer_field_mapping[postgres_fields.IntegerRangeField] = IntegerRangeField
     ModelSerializer.serializer_field_mapping[postgres_fields.FloatRangeField] = FloatRangeField
-
-
-class LowercaseEmailField(EmailField):
-    """
-    An enhancement over django-rest-framework's EmailField to allow
-    case-insensitive serialization and deserialization of e-mail addresses.
-    """
-    def to_internal_value(self, data):
-        data = super(LowercaseEmailField, self).to_internal_value(data)
-        return data.lower()
-
-    def to_representation(self, value):
-        value = super(LowercaseEmailField, self).to_representation(value)
-        return value.lower()
