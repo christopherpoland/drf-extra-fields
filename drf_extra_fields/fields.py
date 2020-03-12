@@ -9,6 +9,7 @@ import chardet
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.utils import six
+import urllib
 from django.utils.translation import ugettext_lazy as _
 
 from mimetypes import guess_extension, guess_type
@@ -55,7 +56,7 @@ class Base64FieldMixin(object):
     def to_internal_value(self, base64_data):
         # Check if this is a base64 string
         if base64_data[0:4] == 'http':
-            return base64_data.split('/media/')[1].replace('%25','%').replace('%3F','?').replace('%3D','=')
+            return urllib.parse.unquote(base64_data.split('/media/')[1])
         if base64_data in self.EMPTY_VALUES:
             return None
         if isinstance(base64_data, six.string_types):
