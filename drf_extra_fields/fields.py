@@ -55,7 +55,7 @@ class Base64FieldMixin(object):
     def to_internal_value(self, base64_data):
         # Check if this is a base64 string
         if base64_data[0:4] == 'http':
-            return base64_data.split('/media/')[1]
+            return base64_data.split('/media/')[1].replace('%25','%').replace('%3F','?').replace('%3D','=')
         if base64_data in self.EMPTY_VALUES:
             return None
         if isinstance(base64_data, six.string_types):
