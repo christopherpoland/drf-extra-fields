@@ -54,11 +54,14 @@ class Base64FieldMixin(object):
 
     def to_internal_value(self, base64_data):
         # Check if this is a base64 string
+        print(base64_data[0:4])
         if base64_data[0:4] == 'http':
             return base64_data
         if base64_data in self.EMPTY_VALUES:
             return None
+        print('welp')
         if isinstance(base64_data, six.string_types):
+            print('???')
             # Strip base64 header.
             if ';base64,' in base64_data:
                 header, base64_data = base64_data.split(';base64,')
@@ -76,6 +79,7 @@ class Base64FieldMixin(object):
                 raise ValidationError(self.INVALID_TYPE_MESSAGE)
             complete_file_name = file_name + "." + file_extension
             data = ContentFile(decoded_file, name=complete_file_name)
+            print('^^^^^^^^', super(Base64FieldMixin, self).to_internal_value(data))
             return super(Base64FieldMixin, self).to_internal_value(data)
         raise ValidationError(_('This is not an base64 string'))
 
@@ -100,6 +104,15 @@ class Base64FieldMixin(object):
             except Exception:
                 raise IOError("Error encoding file")
         else:
+            if '/media/' in str(file):
+                art = str(file).split('/media/')[1]
+                print(art, '))))))')
+                print(str(file))
+                return art
+
+            # if str(file)[0:4] == 'http':
+            #     return file
+            # else:
             return super(Base64FieldMixin, self).to_representation(file)
 
 
