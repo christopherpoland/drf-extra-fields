@@ -55,8 +55,12 @@ class Base64FieldMixin(object):
 
     def to_internal_value(self, base64_data):
         # Check if this is a base64 string
-        if base64_data[0:4] == 'http':
-            return urllib.parse.unquote(base64_data.split('/media/')[1])
+        if base64_data[0:4] == 'http' or base64_data[0:4] == 'clas':
+            print('eyyyyyyy')
+            print(urllib.parse.unquote(base64_data.split('/media/')[1]))
+            print(base64_data.split('/media/')[1])
+            print(urllib.parse.unquote("https://spinndle-staging-media.s3.amazonaws.com/media/class_2/quest_9026/post_1029/4296f41d-31d.png%3FX-Amz-Algorithm%3DAWS4-HMAC-SHA256%26X-Amz-Credential%3DAKIA56GWNZCTJTKE7CT6/20200312/ca-central-1/s3/aws4_request%26X-Amz-Date%3D20200312T232354Z%26X-Amz-Expires%3D3600%26X-Amz-SignedHeaders%3Dhost%26X-Amz-Signature%3De67d42e56dc5da8afaf37e5dd14f571db48ff1c061a5042422244c81f460c70a?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA56GWNZCTJTKE7CT6%2F20200312%2Fca-central-1%2Fs3%2Faws4_request&X-Amz-Date=20200312T232416Z&X-Amz-Expires=3600&X-Amz-SignedHeaders=host&X-Amz-Signature=69018f36687f6bf413f519991de2618e9c387849956a510e9822db5dc9d84bba"))
+            return urllib.parse.unquote(base64_data)#.split('/media/')[1])
         if base64_data in self.EMPTY_VALUES:
             return None
         if isinstance(base64_data, six.string_types):
@@ -101,7 +105,10 @@ class Base64FieldMixin(object):
             except Exception:
                 raise IOError("Error encoding file")
         else:
-            if str(file)[0:4] != 'http':
+            print('&&&&&&', str(file))
+            if str(file)[0:4] == 'http': # or str(file)[0:4] != 'clas':
+                return str(file)
+            else:
                 return super(Base64FieldMixin, self).to_representation(file)
 
 class Base64ImageField(Base64FieldMixin, ImageField):
