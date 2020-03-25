@@ -56,31 +56,44 @@ class Base64FieldMixin(object):
     def to_internal_value(self, base64_data):
         # Check if this is a base64 string
         if base64_data[0:4] == 'http' or base64_data[0:4] == 'clas':
-            print('eyyyyyyy')
-            print(urllib.parse.unquote(base64_data.split('/media/')[1]))
-            print(base64_data.split('/media/')[1])
-            print(urllib.parse.unquote("https://spinndle-staging-media.s3.amazonaws.com/media/class_2/quest_9026/post_1029/4296f41d-31d.png%3FX-Amz-Algorithm%3DAWS4-HMAC-SHA256%26X-Amz-Credential%3DAKIA56GWNZCTJTKE7CT6/20200312/ca-central-1/s3/aws4_request%26X-Amz-Date%3D20200312T232354Z%26X-Amz-Expires%3D3600%26X-Amz-SignedHeaders%3Dhost%26X-Amz-Signature%3De67d42e56dc5da8afaf37e5dd14f571db48ff1c061a5042422244c81f460c70a?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA56GWNZCTJTKE7CT6%2F20200312%2Fca-central-1%2Fs3%2Faws4_request&X-Amz-Date=20200312T232416Z&X-Amz-Expires=3600&X-Amz-SignedHeaders=host&X-Amz-Signature=69018f36687f6bf413f519991de2618e9c387849956a510e9822db5dc9d84bba"))
             return urllib.parse.unquote(base64_data)#.split('/media/')[1])
         if base64_data in self.EMPTY_VALUES:
             return None
         if isinstance(base64_data, six.string_types):
             # Strip base64 header.
+
             if ';base64,' in base64_data:
                 header, base64_data = base64_data.split(';base64,')
+                if 'codecs' in header:
+                    header = header.split(';codecs')[0]
             # Try to decode the file. Return validation error if it fails.
             try:
+                
                 decoded_file = base64.b64decode(base64_data)
             except (TypeError, binascii.Error, ValueError):
                 raise ValidationError(self.INVALID_FILE_MESSAGE)
             # Generate file name:
             file_name = self.get_file_name(decoded_file)
             # Get the file name extension:
-            file_extension = mimetypes.guess_extension(header.split(":")[1]).split(".")[1]
+            # else: 
+            # if (header.split(":")[1])[0:5] == 'audio':
+            #     file_extension = header.split('/')[1]
+            try:
+                file_extension = mimetypes.guess_extension(header.split(":")[1]).split(".")[1]
+            except:
+                try:
+                    file_extension = header.split('/')[1]
+                except:
+                    raise ValidationError(self.INVALID_TYPE_MESSAGE)
+            # Fix for jpg files
+            if file_extension == 'jpe':
+                file_extension = 'jpg'
             # file_extension = self.get_file_extension(file_name, decoded_file)
             if file_extension not in self.ALLOWED_TYPES:
                 raise ValidationError(self.INVALID_TYPE_MESSAGE)
             complete_file_name = file_name + "." + file_extension
             data = ContentFile(decoded_file, name=complete_file_name)
+            
             return super(Base64FieldMixin, self).to_internal_value(data)
         raise ValidationError(_('This is not an base64 string'))
 
@@ -105,7 +118,6 @@ class Base64FieldMixin(object):
             except Exception:
                 raise IOError("Error encoding file")
         else:
-            print('&&&&&&', str(file))
             if str(file)[0:4] == 'http': # or str(file)[0:4] != 'clas':
                 return str(file)
             else:
@@ -120,18 +132,10 @@ class Base64ImageField(Base64FieldMixin, ImageField):
         "jpeg",
         "jpg",
         "png",
-        "gif",
-        "pdf"
+        "gif"
     )
     INVALID_FILE_MESSAGE = _("Please upload a valid image.")
     INVALID_TYPE_MESSAGE = _("The type of the image couldn't be determined.")
-
-    def get_file_extension(self, filename, decoded_file):
-        name, file_extension = os.path.splitext(filename)
-        extension = imghdr.what(filename, decoded_file)
-        extension = "jpg" if extension == "jpeg" else extension
-        return extension
-
 
 class HybridImageField(Base64ImageField):
     """
@@ -142,8 +146,8 @@ class HybridImageField(Base64ImageField):
         "jpeg",
         "jpg",
         "png",
-        "gif",
-        "pdf",
+        "gif" #,
+        # "pdf",
     )
     def to_internal_value(self, data):
         """
@@ -168,12 +172,12 @@ class Base64FileField(Base64FieldMixin, FileField):
         "png",
         "gif",
         "pdf",
-        "txt",
-        "docx",
-        "doc",
-        "xls",
-        "xlsx",
-        "bat"
+        # "txt",
+        # "docx",
+        # "doc",
+        # "xls",
+        # "xlsx",
+        # "bat"
     )
 
     INVALID_FILE_MESSAGE = _("Please upload a valid file.")
