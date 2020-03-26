@@ -146,8 +146,8 @@ class HybridImageField(Base64ImageField):
         "jpeg",
         "jpg",
         "png",
-        "gif" #,
-        # "pdf",
+        "gif",
+        "bmp",
     )
     def to_internal_value(self, data):
         """
@@ -171,13 +171,18 @@ class Base64FileField(Base64FieldMixin, FileField):
         "jpg",
         "png",
         "gif",
+        "bmp",
         "pdf",
-        # "txt",
-        # "docx",
-        # "doc",
-        # "xls",
-        # "xlsx",
-        # "bat"
+        "txt",
+        "docx",
+        "doc",
+        "xls",
+        "xlsx",
+        "ppt",
+        "pptx"
+        "bat",
+        "avi",
+        "csv",
     )
 
     INVALID_FILE_MESSAGE = _("Please upload a valid file.")
