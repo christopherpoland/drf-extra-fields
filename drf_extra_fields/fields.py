@@ -55,17 +55,22 @@ class Base64FieldMixin(object):
 
     def to_internal_value(self, base64_data):
         # Check if this is a base64 string
+        print('field.pyyyyyyyyyyyyyyyyyy')
+        print(base64_data[0:100])
         if base64_data[0:4] == 'http' or base64_data[0:4] == 'clas':
             return urllib.parse.unquote(base64_data)#.split('/media/')[1])
         if base64_data in self.EMPTY_VALUES:
+            print('emptyyyyy')
             return None
         if isinstance(base64_data, six.string_types):
             # Strip base64 header.
 
             if ';base64,' in base64_data:
                 header, base64_data = base64_data.split(';base64,')
+                print('------', header)
                 if 'codecs' in header:
                     header = header.split(';codecs')[0]
+                print(header)
             # Try to decode the file. Return validation error if it fails.
             try:
                 
@@ -73,8 +78,11 @@ class Base64FieldMixin(object):
             except (TypeError, binascii.Error, ValueError):
                 raise ValidationError(self.INVALID_FILE_MESSAGE)
             # Generate file name:
+            print('********', decoded_file[0:100])
             file_name = self.get_file_name(decoded_file)
+            print('filename', file_name)
             # Get the file name extension:
+            print( mimetypes.guess_extension(header.split(":")[1]) )
             # else: 
             # if (header.split(":")[1])[0:5] == 'audio':
             #     file_extension = header.split('/')[1]
@@ -88,12 +96,15 @@ class Base64FieldMixin(object):
             # Fix for jpg files
             if file_extension == 'jpe':
                 file_extension = 'jpg'
+            print(file_extension,'--------', self.ALLOWED_TYPES )
             # file_extension = self.get_file_extension(file_name, decoded_file)
             if file_extension not in self.ALLOWED_TYPES:
                 raise ValidationError(self.INVALID_TYPE_MESSAGE)
             complete_file_name = file_name + "." + file_extension
+            print('complete',complete_file_name)
             data = ContentFile(decoded_file, name=complete_file_name)
             
+            print('field againnnnnnnnnnnnn')
             return super(Base64FieldMixin, self).to_internal_value(data)
         raise ValidationError(_('This is not an base64 string'))
 
@@ -110,6 +121,7 @@ class Base64FieldMixin(object):
             # empty base64 str rather than let the exception propagate unhandled
             # up into serializers.
             if not file:
+                print('yooooobadddddd')
                 return ''
 
             try:
@@ -179,7 +191,7 @@ class Base64FileField(Base64FieldMixin, FileField):
         "xls",
         "xlsx",
         "ppt",
-        "pptx"
+        "pptx",
         "bat",
         "avi",
         "csv",
